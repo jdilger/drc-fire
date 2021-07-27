@@ -1,5 +1,6 @@
 import ee
 ee.Initialize()
+import imgLib
 import config as c
 from paramters import *
 
@@ -107,7 +108,7 @@ def ND_nir_swir2(img):
 	img = img.addBands(img.normalizedDifference(['nir','swir2']).rename(['NBR']))  # NBR, MNDVI
 	return img
 
-import imgLib
+
 # todo:set all env stuff when deciding in other functions
 env = imgLib.landsat.env()
 env.maskSR = 'test'
