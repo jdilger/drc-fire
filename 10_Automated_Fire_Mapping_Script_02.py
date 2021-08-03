@@ -139,14 +139,16 @@ def joinCollections(c1, c2, maskAnyNullValues = True, joinProperty = 'system:tim
 # // Create a collection with the burn-masked and p-value threshold applied to delineate burned areas
 analysisPeriod = ee.Number(zScores.first().get('analysisPeriod')) 
 zScoresTHandMasked = zScores.map(ppZP)
-print(zScoresTHandMasked.first().bandNames().getInfo())
-# // Create another collection with just the burn-areas masked to preserve continuous anomaly data
-# zScoresBurnMasked = zScores.map(ppBurnDate)
-# # // Join the collections - take only what you need
-# joinZPandPPZP = joinCollections(zScoresTHandMasked.select(["burn","yearMonthDay","month","day"]), zScoresBurnMasked, False)
-# # // Remove the mean, stdDev, and N bands
-# joinZPandPPZP = joinZPandPPZP.select([0,1,2,3,4,5,6,7,8])
 
+# // Create another collection with just the burn-areas masked to preserve continuous anomaly data
+zScoresBurnMasked = zScores.map(ppBurnDate)
+
+# # // Join the collections - take only what you need
+joinZPandPPZP = joinCollections(zScoresTHandMasked.select(["burn","yearMonthDay","month","day"]), zScoresBurnMasked, False)
+print(joinZPandPPZP.first().bandNames().getInfo())
+# # // Remove the mean, stdDev, and N bands
+joinZPandPPZP = joinZPandPPZP.select([0,1,2,3,4,5,6,7])
+print(joinZPandPPZP.first().bandNames().getInfo())
 # print('Here is the final burn map collection for export:', 
 # joinZPandPPZP.size().getInfo(),joinZPandPPZP.first().bandNames().getInfo())
 
