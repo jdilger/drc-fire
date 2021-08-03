@@ -48,7 +48,6 @@ def prepare_dates(startJulian, endJulian):
 
 	return startDate, endDate
 
-
 startDate, endDate = prepare_dates(startJulian, endJulian)
 
 
@@ -97,9 +96,7 @@ def apply_masking_params():
 prepare_masking('fmaskapproach')
 
 
-print(applyCloudScore, applyTDOM, applyFmaskCloudMask, applyFmaskCloudShadowMask, applyFmaskSnowMask)
-
-
+# print(applyCloudScore, applyTDOM, applyFmaskCloudMask, applyFmaskCloudShadowMask, applyFmaskSnowMask)
 apply_masking_params()
 
 print(applyCloudScore, applyTDOM, applyFmaskCloudMask, applyFmaskCloudShadowMask, applyFmaskSnowMask)
@@ -110,6 +107,13 @@ def ND_nir_swir2(img):
 
 
 # todo:set all env stuff when deciding in other functions
+def setup_landsat():
+	env = imgLib.landsat.env()
+	env.maskSR = 'test'
+	env.shadowMask = applyTDOM
+	env.cloudMask = applyCloudScore
+	ls = imgLib.landsat.functions(env)
+	return ls
 env = imgLib.landsat.env()
 env.maskSR = 'test'
 env.shadowMask = applyTDOM
@@ -217,7 +221,12 @@ baselineEndYr = ee.Number(yr - 1)
 print('check baseline start year', baselineStartYr.getInfo())
 print('check baseline end year', baselineEndYr.getInfo())
 print("analysisDates",analysisDates.getInfo())
-
+def get_analysis_dates(startJulian,endJulian,analysisPeriod,analysisYear):
+	analysisDates = ee.List.sequence(startJulian, endJulian, analysisPeriod)
+	yr = analysisYear
+	baselineStartYr = ee.Number(yr - baselineLength)
+	baselineEndYr = ee.Number(yr - 1)
+	return analysisDates, yr, baselineStartYr, baselineEndYr
 #   //Iterate through analysis dates to get dates within baseline and analysis years
 def dateTime(dt):
 	dt = ee.Number(dt)
@@ -339,7 +348,17 @@ def dateTime(dt):
 	# getImageLib.exportToAssetWrapper(p_forExport, imgName, exportPathRoot+"/"+imgName,'mean',
 	# geometry, exportScale, crs, null)
 	
-
+def script1(geometry, cover, **kwargs):
+	# main inports, geometry, cover
+	# kwargs count,startJulian, endJulian, maskingMethod,analysisYear,baselineLength
+	startDate, endDate = prepare_dates(startJulian, endJulian)
+	prepare_masking(maskingMethod)
+	apply_masking_params()
+	ls = setup_landsat()
+	ls = ls.getLandsat(geometry,analysisYear - baselineLength, analysisYear).map(ND_nir_swir2)
+	dummyImage = ee.Image(ls.first())
+	analysisDates, yr, baselineStartYr, baselineEndYr = get_analysis_dates(startJulian,endJulian,analysisPeriod,analysisYear)
+	out = ee.ImageCollection(analysisDates.map(dateTime))
 out = ee.ImageCollection(analysisDates.map(dateTime))
 print(out.size().getInfo())
 print(out.first().bandNames().getInfo())
