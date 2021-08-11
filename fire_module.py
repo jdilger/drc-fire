@@ -7,7 +7,7 @@ class step1(paramtersIO):
     def __init__(self):
         paramtersIO.__init__(self)
     
-    def script1(self,geometry, cover, coverName):
+    def prepare_script1(self,geometry, cover, coverName):
         self.coverName = coverName
         self.coverType = self.coverDict[coverName]['value']
         self.cover = cover
@@ -17,7 +17,26 @@ class step1(paramtersIO):
         self.prepare_masking(self.maskingMethod)
         self.apply_masking_params()
         ls_setup = self.setup_landsat()
-        self.ls = ls_setup.getLandsat(geometry,self.analysisYear - self.baselineLength, self.analysisYear).map(self.ND_nir_swir2)
+        self.ls = ls_setup.getLandsat(self.geometry,self.analysisYear - self.baselineLength, self.analysisYear).map(self.ND_nir_swir2)
+        self.dummyImage = ee.Image(self.ls.first())
+        analysisDates, self.yr, self.baselineStartYr, self.baselineEndYr = self.get_analysis_dates(self.startJulian,self.endJulian,self.analysisPeriod,self.analysisYear)
+        out = analysisDates.map(lambda i : self.prepare_baseline(i))
+
+        return ee.ImageCollection(out)
+
+    def script1(self,baseline_col,geometry, cover, coverName):
+        # will pipeline be able to remember these states? or should I define them from input collection???
+        self.coverName = coverName
+        self.coverType = self.coverDict[coverName]['value']
+        self.cover = cover
+        self.geometry = geometry
+        print(baseline_col.size().getInfo())
+        self.baseline_col = baseline_col.filterMetadata("coverName","equals",coverName)
+        print(self.baseline_col.size().getInfo())
+        self.prepare_masking(self.maskingMethod)
+        self.apply_masking_params()
+        ls_setup = self.setup_landsat()
+        self.ls = ls_setup.getLandsat(self.geometry,self.analysisYear - self.baselineLength, self.analysisYear).map(self.ND_nir_swir2)
         self.dummyImage = ee.Image(self.ls.first())
         analysisDates, self.yr, self.baselineStartYr, self.baselineEndYr = self.get_analysis_dates(self.startJulian,self.endJulian,self.analysisPeriod,self.analysisYear)
         out = analysisDates.map(lambda i : self.dateTime(i))
@@ -166,7 +185,42 @@ class step1(paramtersIO):
         baselineEndYr = ee.Number(yr - 1)
         return analysisDates, yr, baselineStartYr, baselineEndYr
     
-    #   //Iterate through analysis dates to get dates within baseline and analysis years
+    def prepare_baseline(self,dt):
+        dt = ee.Number(dt)
+
+        analysisStartJulian = dt
+        analysisStartDate = ee.Date.fromYMD(self.yr,1,1).advance(analysisStartJulian,'day')
+
+
+        # //Get dates - baseline period
+        baselineStartDate = ee.Date.fromYMD(self.baselineStartYr,1,1).advance(dt.subtract(self.analysisPeriod),'day')
+        baselineEndDate = ee.Date.fromYMD(self.baselineEndYr,1,1).advance(dt.subtract(1),'day')    
+
+        # analysisCollection = fillEmptyCollections(analysisCollection, self.dummyImage)
+        baselineCollection = self.ls.filterDate(baselineStartDate, baselineEndDate)
+
+        if (type(self.coverType) == list ):
+            to = ee.List.repeat(1, len(self.coverType))
+            mask = self.cover.remap(self.coverType,to, 0).rename([self.coverName])
+
+        else:
+            mask = self.cover.remap([self.coverType],[1], 0).rename([self.coverName])
+        
+        groups_m = self.groups.updateMask(mask.gte(1))
+
+        # // Apply the landcover mask to the collections
+        baselineCollection = baselineCollection.map(lambda img : img.updateMask(groups_m) )
+
+        baselineMeanStdDevN = self.collectionToMeanStdDev(baselineCollection.select([self.indexName]),groups_m)        
+        temporalStdDev = baselineCollection.select([self.indexName]).reduce(ee.Reducer.stdDev()).rename("tStd")
+        temporalMean = baselineCollection.select([self.indexName]).mean().rename("tMean")
+
+        out = baselineMeanStdDevN.addBands(temporalStdDev).addBands(temporalMean)
+        out = self.set_metadata(out,analysisStartDate,baselineStartDate,baselineEndDate)
+        
+        return out
+        #   //Iterate through analysis dates to get dates within baseline and analysis years
+    
     def dateTime(self,dt):
         dt = ee.Number(dt)
         # //Get dates - analysis period
@@ -191,7 +245,7 @@ class step1(paramtersIO):
             return ee.ImageCollection(ee.Algorithms.If(imageCount.gt(0),inCollection,dummyCollection))
 
         analysisCollection = fillEmptyCollections(analysisCollection, self.dummyImage)
-        baselineCollection = self.ls.filterDate(baselineStartDate, baselineEndDate)
+        baselineCollection =  self.baseline_col.filterDate(analysisStartDate, analysisEndDate)
 
         # // Mask "Groups" with chosen lancover type.
         # //  cover = landcover.filterDate(ee.Date.fromYMD(coverYear-1,1,1),ee.Date.fromYMD(coverYear,1,1))
@@ -209,20 +263,19 @@ class step1(paramtersIO):
 
         # // Apply the landcover mask to the collections
         analysisCollection = analysisCollection.map(lambda img : img.updateMask(groups_m) )
-        baselineCollection = baselineCollection.map(lambda img : img.updateMask(groups_m) )
+        # baselineCollection = baselineCollection.map(lambda img : img.updateMask(groups_m) )
 
 
         # // Compute and visualize baseline statistics based on index and group
-        baselineMeanStdDevN = self.collectionToMeanStdDev(baselineCollection.select([self.indexName]),groups_m)
+        baselineImage = baselineCollection.first()
 
-        # // Call the function to compute statistics. In this case we've precomputed the temporal portions
-        # // but the land cover specific needs to be run on-the-fly. For precomputed products, their
-        # // function calls can be seen next to each image as comments.
-        lcMean = baselineMeanStdDevN.select([0])
-        lcStdDev = baselineMeanStdDevN.select([1])
-        # todo: add temporals as config vars or maybe something to pass into module
-        temporalStdDev = ee.Image("projects/sig-ee/FIRE/DRC/preprocessed/temporalStdDev_DIAF_2000forest")# baselineCollection.select([indexName]).reduce(ee.Reducer.stdDev())
-        temporalMean = ee.Image("projects/sig-ee/FIRE/DRC/preprocessed/temporalMean_DIAF_2000forest")# baselineCollection.select([indexName]).mean()    
+        # # // Call the function to compute statistics. In this case we've precomputed the temporal portions
+        # # // but the land cover specific needs to be run on-the-fly. For precomputed products, their
+        # # // function calls can be seen next to each image as comments.
+        lcMean = baselineImage.select(['mean'])
+        lcStdDev = baselineImage.select(['stdDev'])
+        temporalStdDev = baselineImage.select(['tStd'])
+        temporalMean = baselineImage.select(['tMean'])
 
         # // Function to calculate z-scores and p-values and add as layers to the image
         def addZP(image):
@@ -232,7 +285,7 @@ class step1(paramtersIO):
             pSpatial = self.pval(zSpatial).rename(['pval_spatial'])
             pTemporal = self.pval(zTemporal).rename(['pval_temporal'])
             return image.select([self.indexName]).addBands(zSpatial).addBands(pSpatial) \
-            .addBands(zTemporal).addBands(pTemporal).addBands(baselineMeanStdDevN.select([0,1,2]))
+            .addBands(zTemporal).addBands(pTemporal)#.addBands(baselineMeanStdDevN.select([0,1,2])) #I dont think we need this...
 
 
         # // Map the function above over the analysis collection and display the result.
@@ -240,18 +293,11 @@ class step1(paramtersIO):
 
         # //reduce the analysis collection (2 images) to the mean values fo export
         forExport = analysisCollectionZP.mean()
-        
-        # # // Add image properties - Assign analysis period date as the middle of the period
-        # todo: clean this up
-        forExport = forExport.set('system:time_start', (analysisStartDate.advance(int(self.analysisPeriod/2),'day').millis()))
-        forExport = forExport.set('baseline_start', baselineStartDate.millis())
-        forExport = forExport.set('baseline_end', baselineEndDate.millis())
-        forExport = forExport.set("coverName",self.coverName,"analysisYear",self.analysisYear,"baselineLength",self.baselineLength,
-                                    "startJulian",self.startJulian,"endJulian",self.endJulian,"analysisPeriod",self.analysisPeriod,
-                                    "indexName",self.indexName)
-
         # // Add land cover image to export
-        forExport = forExport.addBands(self.cover.rename('landcover'))
+        forExport = forExport.addBands(self.cover.rename('landcover')).addBands(baselineImage.select('N'))
+
+        # # // Add image properties - Assign analysis period date as the middle of the period
+        forExport = self.set_metadata(forExport,analysisStartDate,baselineStartDate,baselineEndDate)
 
         imgNameList = ee.List(['DRC',
                         ee.String(self.baselineStartYr),
@@ -264,25 +310,63 @@ class step1(paramtersIO):
 
         imgName = imgNameList.join("_")
         forExport = forExport.set('image_name',imgName)
-        
+
         return forExport
 
-    def export_image_collection(self, collection, geometry, export_path=None,exportScale=None,crs=None,test=False):
+    def set_metadata(self,forExport,*args):
+        analysisStartDate = args[0]
+        baselineStartDate = args[1]
+        baselineEndDate = args[2]
+
+        forExport = forExport.set('system:time_start', (analysisStartDate.advance(int(self.analysisPeriod/2),'day').millis()))
+        forExport = forExport.set('baseline_start', baselineStartDate.millis())
+        forExport = forExport.set('baseline_end', baselineEndDate.millis())
+        forExport = forExport.set("coverName",self.coverName,"analysisYear",self.analysisYear,"baselineLength",self.baselineLength,
+                                    "startJulian",self.startJulian,"endJulian",self.endJulian,"analysisPeriod",self.analysisPeriod,
+                                    "indexName",self.indexName)
+        return forExport
+
+    def export_nbr_anomalies(self, image, geometry, i, export_path=None,exportScale=None,crs=None,test=False):
         if exportScale is None:exportScale = self.exportScale
         if crs is None: crs = self.crs
         if export_path is None: export_path = self.coverDict[self.coverName]["exportPath"]
+        
+        scaleBands = image.select(['pval_spatial','pval_temporal']).multiply(10000).int16()
+        img = image.select(['N']).addBands(scaleBands)
+        imgName = f"nbr_anomalies_{self.analysisYear}_{self.coverDict[self.coverName]['abbreviation']}_{i}"
+        print('imgName:',imgName)
+        
+        if test:
+            print(ee.Image(img).toDictionary().getInfo())
+            print(ee.Image(img).bandNames().getInfo())
+            print(f'{export_path}/{imgName}')
+        else:
+            task = ee.batch.Export.image.toAsset(
+                image=img,description=imgName,
+                assetId=f'{export_path}/{imgName}',
+                region=geometry.geometry(),
+                scale=exportScale,
+                crs=crs,
+                maxPixels=1e13,
+                )
+            
+            task.start()
+        pass
 
-        collection = collection.sort('system:time_start')
-        col_size = collection.size()
-        col_list = collection.toList(col_size)
-        col_size_local = 12#col_size.getInfo()
-        if test : col_size_local = 1
-        for i in range(0, col_size_local):
-            img_in = ee.Image(col_list.get(i))
-            scaleBands = img_in.select(['pval_spatial','pval_temporal']).multiply(10000).int16()
-            img = img_in.select(['N']).addBands(scaleBands)
-            imgName = str(i) +"_fire_scaledpvals"#img.get('image_name').getInfo() + '_colExportTest_obj'
-            print('imgName:',imgName)
+    def export_baseline_landcover(self,image, geometry, i, export_path=None,exportScale=None,crs=None,test=False):
+        if exportScale is None:exportScale = self.exportScale
+        if crs is None: crs = self.crs
+        if export_path is None: export_path = self.coverDict[self.coverName]["exportPathBaseline"]
+
+        imgName = f'baseline_mean_std_{self.analysisYear}_{self.coverDict[self.coverName]["abbreviation"]}_{i}'
+        print('imgName:',imgName)
+
+        if test:
+            print(ee.Image(image).toDictionary().getInfo())
+            print(ee.Image(image).bandNames().getInfo())
+            print(f'{export_path}/{imgName}')
+        else:
+            img = image
             task = ee.batch.Export.image.toAsset(
                 image=img,description=imgName,
                 assetId=f'{export_path}/{imgName}',
@@ -294,28 +378,63 @@ class step1(paramtersIO):
             
             task.start()
 
+        pass
 
+    def export_image_collection(self, collection, geometry, export_func, export_path=None,exportScale=None,crs=None,test=False):
+        collection = collection.sort('system:time_start')
+        col_size = collection.size()
+        col_list = collection.toList(col_size)
+        col_size_local = 12
+        if test : col_size_local = 1
+        for i in range(0, col_size_local):
+            img_in = ee.Image(col_list.get(i))
+            export_func(img_in, geometry, i, export_path,exportScale,crs,test)
 
-a = step1()
+ 
 
-test_geom = ee.FeatureCollection("projects/sig-misc-ee/assets/drc_fire/test_areas/test_area")
-DRC_border = ee.FeatureCollection("projects/ee-karistenneson/assets/BurnedBiomass/DRC_Training/DRC_Border")
+if "__main__" == __name__:
+        
 
-cover = ee.Image('projects/sig-ee/FIRE/DRC/DIAF_2000forest')
-# // The land cover map is for 2000.
-# // Cover classes are in this order:
-# // Value, Label, Abbreviation
-# // "1", "Dense humid forest on dry land", DHF
-# // "2" ,"Dense moist forest on hydromorphic soil", DMF
-# // "3" ,"Secondary forest", SNDF
-# // "4" ,"Dry forest or open forest", DRYF
-# // "5" ,"Savannah", SAV
-# // "6" ,"Cultures and regeneration of abandoned crops", REGN
-# // "7" ,"Water zone", WATER
-# // "8" ,"Agglomeration", AGGL
-# // "9" ,"Other", OTHER
-# // "1,2,3" ,"Forests without dry forest", FOREST
-# //Chose a cover class to filter to for fire detection:
-covername = "Dense moist forest on hydromorphic soil"
-out = a.script1(DRC_border, cover, covername)
-a.export_image_collection(out,DRC_border, test=True)
+    a = step1()
+    # drc
+    # test_geom = ee.FeatureCollection("projects/sig-misc-ee/assets/drc_fire/test_areas/test_area")
+    DRC_border = ee.FeatureCollection("projects/ee-karistenneson/assets/BurnedBiomass/DRC_Training/DRC_Border")
+
+    cover = ee.Image('projects/sig-ee/FIRE/DRC/DIAF_2000forest')
+    # # // The land cover map is for 2000.
+    # # // Cover classes are in this order:
+    # # // Value, Label, Abbreviation
+    # # // "1", "Dense humid forest on dry land", DHF
+    # # // "2" ,"Dense moist forest on hydromorphic soil", DMF
+    # # // "3" ,"Secondary forest", SNDF
+    # # // "4" ,"Dry forest or open forest", DRYF
+    # # // "5" ,"Savannah", SAV
+    # # // "6" ,"Cultures and regeneration of abandoned crops", REGN
+    # # // "7" ,"Water zone", WATER
+    # # // "8" ,"Agglomeration", AGGL
+    # # // "9" ,"Other", OTHER
+    # # // "1,2,3" ,"Forests without dry forest", FOREST
+    # # //Chose a cover class to filter to for fire detection:
+    covername = "Dry forest or open forest"
+
+    # # dag step 1. make baseline col, wait for export
+    # prep_lc = a.prepare_script1(DRC_border,cover,covername)
+    # a.export_image_collection(prep_lc,DRC_border,a.export_baseline_landcover,test=False)
+
+    # # dag step 2. calculate anomalies, wait for export
+    baselineCol = ee.ImageCollection("projects/sig-misc-ee/assets/drc_fire/baseline")
+    anom_lc = a.script1(baselineCol,DRC_border,cover,covername)
+    a.export_image_collection(anom_lc,DRC_border,a.export_nbr_anomalies, test=False)
+
+    # ###############################3
+    # # roc
+    # cover = ee.Image("projects/sig-misc-ee/assets/roc_fire/landcover/roc_forest_cover_map_1990_gaf_fin01")
+    # region = ee.FeatureCollection(ee.Feature(cover.geometry()))
+    # covername = "Forest"
+    # # prep_lc = a.prepare_script1(region,cover,covername)
+    # # a.export_image_collection(prep_lc,region,a.export_baseline_landcover,test=False)
+
+    # baselineCol = ee.ImageCollection("projects/sig-misc-ee/assets/roc_fire/baseline")
+    # anom_lc = a.script1(baselineCol,region,cover,covername)
+
+    # a.export_image_collection(anom_lc,region,a.export_nbr_anomalies,test=True)
