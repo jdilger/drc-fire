@@ -79,19 +79,19 @@ class functions():
 			
 			# mask clouds using the QA band
 			if self.env.maskSR == True:
-				#print "removing clouds" 
+				print("removing clouds") 
 				landsat = landsat.map(self.CloudMaskSRL8)    
 			
 			
 			# mask clouds using cloud mask function
 			if self.env.hazeMask == True:
-				#print "removing haze"
+				print("removing haze")
 				landsat = landsat.map(self.maskHaze)
 
 
 			# mask clouds using cloud mask function
 			if self.env.shadowMask == True:
-				#print "shadow masking"
+				print("shadow masking")
 				self.fullCollection = ee.ImageCollection('LANDSAT/LC08/C01/T1_SR').filterBounds(self.env.location).select(self.env.sensorBandDictLandsatSR.get('L8'),self.env.bandNamesLandsat)  
 				landsat = self.maskShadows(landsat)
 			
@@ -100,7 +100,7 @@ class functions():
 
 			# mask clouds using cloud mask function
 			if self.env.cloudMask == True:
-				#print "removing some more clouds"
+				print("removing some more clouds")
 				landsat = landsat.map(self.maskClouds)
 
 			if self.env.brdfCorrect == True:
