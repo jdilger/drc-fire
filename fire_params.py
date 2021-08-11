@@ -5,30 +5,34 @@ class paramtersIO(object):
         # // currently has export paths for default forest types for testing. 
         self.defaultExportPath = "projects/sig-misc-ee/assets/drc_fire/test_runs"
 
-        self.coverDict = {
+        self.drc_coverDict = {
             "Dense humid forest on dry land":{
             "value":1,
             "abbreviation": "DHF",
             "color":'8aa745',
-            "exportPath":"projects/sig-misc-ee/assets/drc_fire/test_runs/dhf"
+            "exportPath":"projects/sig-misc-ee/assets/drc_fire/test_runs/dhf",
+            "exportPathBaseline":"projects/sig-misc-ee/assets/drc_fire/baseline",
             },
             "Dense moist forest on hydromorphic soil":{
             "value":2,
             "abbreviation":"DMF",
             "color":'6ee682',
-            "exportPath":"projects/sig-misc-ee/assets/drc_fire/test_runs/dmf"
+            "exportPath":"projects/sig-misc-ee/assets/drc_fire/test_runs/dmf",
+            "exportPathBaseline":"projects/sig-misc-ee/assets/drc_fire/baseline",
             },
             "Secondary forest":{
             "value":3,
             "abbreviation":"SNDF",
             "color":'f0ff72',
-            "exportPath": "projects/sig-misc-ee/assets/drc_fire/test_runs/sndf"
+            "exportPath": "projects/sig-misc-ee/assets/drc_fire/test_runs/sndf",
+            "exportPathBaseline":"projects/sig-misc-ee/assets/drc_fire/baseline",
             },
             "Dry forest or open forest":{
             "value":4,
             "abbreviation":"DRYF",
             "color":'ffc625',
-            "exportPath":"projects/sig-misc-ee/assets/drc_fire/test_runs/dryf"
+            "exportPath":"projects/sig-misc-ee/assets/drc_fire/test_runs/dryf",
+            "exportPathBaseline":"projects/sig-misc-ee/assets/drc_fire/baseline",
             },
             "Savannah":{
             "value":5,
@@ -58,10 +62,40 @@ class paramtersIO(object):
             "Forests without dry forest":{
             "value": [1,2,3],
             "abbreviation":"FOREST",
-            "exportPath":"projects/sig-misc-ee/assets/drc_fire/test_runs/forests"
+            "exportPath":"projects/sig-misc-ee/assets/drc_fire/test_runs/forests",
+            "exportPathBaseline":"projects/sig-misc-ee/assets/drc_fire/baseline",
             }
         }
 
+        self.roc_coverDict = {
+            "Forest":{
+            "value":10,
+            "abbreviation": "FOREST",
+            "color":'8aa745',
+            "exportPath":"projects/sig-misc-ee/assets/roc_fire/forest",
+            "exportPathBaseline":"projects/sig-misc-ee/assets/roc_fire/baseline",
+            "exportPathYearly":"projects/sig-misc-ee/assets/roc_fire/yearly",
+
+            },
+            "Background":{
+            "value":0,
+            "abbreviation":"BG",
+            "color":'6ee682',
+            # "exportPath":"projects/sig-misc-ee/assets/drc_fire/test_runs/dmf",
+            "exportPathBaseline":"projects/sig-misc-ee/assets/roc_fire/baseline",
+            },
+            "Non forest":{
+            "value":20,
+            "abbreviation":"NF",
+            "color":'f0ff72',
+            # "exportPath": "projects/sig-misc-ee/assets/drc_fire/test_runs/sndf",
+            "exportPathBaseline":"projects/sig-misc-ee/assets/roc_fire/baseline",
+            },
+        }
+
+        self.coverDict = self.drc_coverDict
+        # // Set the ecological regions to use for Z-score calculation 
+        self.groups = ee.Image("projects/sig-ee/FIRE/DRC/eco_regions")
         # // Specify start and end years for all analyses
         # // This method requires at least a 4-year time-span. 
         self.analysisYear = 2016
@@ -81,8 +115,7 @@ class paramtersIO(object):
 
         # // Step 4: Specify the analysis methods parameters 
 
-        # // Set the ecological regions to use for Z-score calculation 
-        self.groups = ee.Image("projects/sig-ee/FIRE/DRC/eco_regions")
+
 
         # // Index to base z-score analysis on
         # // It is recommended to use the Normalized Burn Ration (NBR)
