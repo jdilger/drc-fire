@@ -41,7 +41,7 @@ class step1(paramtersIO):
         self.dummyImage = ee.Image(self.ls.first())
         analysisDates, self.yr, self.baselineStartYr, self.baselineEndYr = self.get_analysis_dates(self.startJulian,self.endJulian,self.analysisPeriod,self.analysisYear)
         out = analysisDates.map(lambda i : self.dateTime(i))
-        return out#ee.ImageCollection(out)
+        return ee.ImageCollection(out)
 
     def unscale_bands(self,img):
 
@@ -226,9 +226,11 @@ class step1(paramtersIO):
         out = self.set_metadata(out,analysisStartDate,baselineStartDate,baselineEndDate)
 
         # todo move this block into another function
+        # maybe scaleBands(func, img/imgCol, args/kwags)
+        # func = scale_baseline(img/imgCol, scalebands, no scalebands, )
         scaleBands = ["tStd","tMean","mean","stdDev"]
         nonscaleBands = ["N","groups"]
-        scaled_img = out.select(scaleBands).multiply(10000)
+        scaled_img = out.select(scaleBands).multiply(10000).int16()
         out = out.select(nonscaleBands).addBands(scaled_img)
 
         return out
@@ -431,7 +433,7 @@ if "__main__" == __name__:
     # # // "9" ,"Other", OTHER
     # # // "1,2,3" ,"Forests without dry forest", FOREST
     # # //Chose a cover class to filter to for fire detection:
-    covername = "Forests without dry forest"
+    covername = "Dry forest or open forest"
 
     # # dag step 1. make baseline col, wait for export
     prep_lc = a.prepare_script1(DRC_border,cover,covername)
@@ -442,7 +444,7 @@ if "__main__" == __name__:
     # anom_lc = a.script1(baselineCol,DRC_border,cover,covername)
     # print(ee.ImageCollection(ee.List(anom_lc).get(4)).first().id().getInfo())
     # print(ee.List(anom_lc).map(lambda i : ee.ImageCollection(i).size()).getInfo())
-    # a.export_image_collection(anom_lc,DRC_border,a.export_nbr_anomalies, test=True)
+    # a.export_image_collection(anom_lc,DRC_border,a.export_nbr_anomalies, test=False)
   
 
     # ###############################3
