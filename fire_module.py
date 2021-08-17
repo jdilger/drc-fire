@@ -6,7 +6,24 @@ ee.Initialize()
 class step1(paramtersIO):
     def __init__(self):
         paramtersIO.__init__(self)
-    
+
+    def test_prepare_script1(self,geometry, cover, coverName):
+        self.coverName = coverName
+        self.coverType = self.coverDict[coverName]['value']
+        self.cover = cover
+        self.geometry = geometry
+
+        startDate, endDate = self.prepare_dates(self.startJulian, self.endJulian)
+        self.prepare_masking(self.maskingMethod)
+        self.apply_masking_params()
+        ls_setup = self.setup_landsat()
+        self.ls = ls_setup.getLandsat(self.geometry,self.analysisYear - self.baselineLength, self.analysisYear).map(self.ND_nir_swir2)
+        self.dummyImage = ee.Image(self.ls.first())
+        analysisDates, self.yr, self.baselineStartYr, self.baselineEndYr = self.get_analysis_dates(self.startJulian,self.endJulian,self.analysisPeriod,self.analysisYear)
+        out = analysisDates.map(lambda i : self.test_prepare_baseline_dates(i))
+
+        return ee.List(out)
+
     def prepare_script1(self,geometry, cover, coverName):
         self.coverName = coverName
         self.coverType = self.coverDict[coverName]['value']
@@ -41,7 +58,8 @@ class step1(paramtersIO):
         self.dummyImage = ee.Image(self.ls.first())
         analysisDates, self.yr, self.baselineStartYr, self.baselineEndYr = self.get_analysis_dates(self.startJulian,self.endJulian,self.analysisPeriod,self.analysisYear)
         out = analysisDates.map(lambda i : self.dateTime(i))
-        return ee.ImageCollection(out)
+
+        return out#ee.ImageCollection(out)
 
     def unscale_bands(self,img):
 
@@ -192,6 +210,18 @@ class step1(paramtersIO):
         baselineEndYr = ee.Number(yr - 1)
         return analysisDates, yr, baselineStartYr, baselineEndYr
     
+    def test_prepare_baseline_dates(self, dt):
+        dt = ee.Number(dt)
+
+        analysisStartJulian = dt
+        analysisStartDate = ee.Date.fromYMD(self.yr,1,1).advance(analysisStartJulian,'day')
+
+
+        # //Get dates - baseline period
+        baselineStartDate = ee.Date.fromYMD(self.baselineStartYr,1,1).advance(dt.subtract(self.analysisPeriod),'day')
+        baselineEndDate = ee.Date.fromYMD(self.baselineEndYr,1,1).advance(dt.subtract(1),'day')    
+        return  analysisStartDate.advance(int(self.analysisPeriod/2),'day').millis()#analysisStartDate
+
     def prepare_baseline(self,dt):
         dt = ee.Number(dt)
 
@@ -261,7 +291,7 @@ class step1(paramtersIO):
 
         analysisCollection = fillEmptyCollections(analysisCollection, self.dummyImage)
         baselineCollection =  self.baseline_col.filterDate(analysisStartDate, analysisEndDate)
-
+        
         # // Mask "Groups" with chosen lancover type.
         # //  cover = landcover.filterDate(ee.Date.fromYMD(coverYear-1,1,1),ee.Date.fromYMD(coverYear,1,1))
         # mask
@@ -352,8 +382,8 @@ class step1(paramtersIO):
         print('imgName:',imgName)
         
         if test:
-            print(ee.Image(img).toDictionary().getInfo())
-            print(ee.Image(img).bandNames().getInfo())
+            # print(ee.Image(img).toDictionary().getInfo())
+            # print(ee.Image(img.bandNames().getInfo())
             print(f'{export_path}/{imgName}')
         else:
             task = ee.batch.Export.image.toAsset(
@@ -437,13 +467,18 @@ if "__main__" == __name__:
 
     # # dag step 1. make baseline col, wait for export
     prep_lc = a.prepare_script1(DRC_border,cover,covername)
+    # print(prep_lc.aggregate_array('system:time_start').map(lambda f :ee.Date(f)).getInfo())
+    # test_prep_lc = a.test_prepare_script1(test_geom,cover,covername)
+    # print(test_prep_lc.getInfo())
     a.export_image_collection(prep_lc,DRC_border,a.export_baseline_landcover,test=False)
 
     # # dag step 2. calculate anomalies, wait for export
     # baselineCol = ee.ImageCollection("projects/sig-misc-ee/assets/drc_fire/baseline")
-    # anom_lc = a.script1(baselineCol,DRC_border,cover,covername)
+    # anom_lc = a.script1(baselineCol,test_geom,cover,covername)
     # print(ee.ImageCollection(ee.List(anom_lc).get(4)).first().id().getInfo())
-    # print(ee.List(anom_lc).map(lambda i : ee.ImageCollection(i).size()).getInfo())
+    # assert ee.List(anom_lc).map(lambda i : ee.ImageCollection(i).size()).getInfo() == [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+    # print(anom_lc.first().bandNames().getInfo())
     # a.export_image_collection(anom_lc,DRC_border,a.export_nbr_anomalies, test=False)
   
 
