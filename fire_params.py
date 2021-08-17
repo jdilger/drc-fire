@@ -33,6 +33,7 @@ class paramtersIO(object):
             "color":'ffc625',
             "exportPath":"projects/sig-misc-ee/assets/drc_fire/nbr_anomalies",
             "exportPathBaseline":"projects/sig-misc-ee/assets/drc_fire/baseline",
+            "exportPathYearly":"projects/sig-misc-ee/assets/drc_fire/yearly"
             },
             "Savannah":{
             "value":5,
@@ -64,6 +65,7 @@ class paramtersIO(object):
             "abbreviation":"FOREST",
             "exportPath":"projects/sig-misc-ee/assets/drc_fire/nbr_anomalies",
             "exportPathBaseline":"projects/sig-misc-ee/assets/drc_fire/baseline",
+            "exportPathYearly":"projects/sig-misc-ee/assets/drc_fire/yearly"
             }
         }
 
