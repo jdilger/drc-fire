@@ -4,16 +4,36 @@ import ee
 import imgLib
 ee.Initialize()
 class step1(paramtersIO):
-    def __init__(self):
+    def __init__(self, analysisYear: int, geometry:ee.FeatureCollection, cover:ee.Image, coverName:str):
         paramtersIO.__init__(self)
 
-    def test_prepare_script1(self,geometry, cover, coverName):
+        # land cover and geomery init
+        self.analysisYear = analysisYear 
         self.coverName = coverName
         self.coverType = self.coverDict[coverName]['value']
         self.cover = cover
         self.geometry = geometry
+        self.full_baseline_col = ee.ImageCollection(self.coverDict[coverName]['exportPathBaseline'])
 
-        startDate, endDate = self.prepare_dates(self.startJulian, self.endJulian)
+
+
+        # ls init
+        self.ls = None
+        self.dummyImage = None
+
+        # shared analysis init
+        self.yr = None
+        self.baselineStartYr = None
+        self.baselineEndYr = None
+        self.baseline_col = None
+
+    def test_prepare_script1(self,geometry, cover, coverName):
+        # self.coverName = coverName
+        # self.coverType = self.coverDict[coverName]['value']
+        # self.cover = cover
+        # self.geometry = geometry
+
+        # startDate, endDate = self.prepare_dates(self.startJulian, self.endJulian)
         self.prepare_masking(self.maskingMethod)
         self.apply_masking_params()
         ls_setup = self.setup_landsat()
@@ -24,13 +44,8 @@ class step1(paramtersIO):
 
         return ee.List(out)
 
-    def prepare_script1(self,geometry, cover, coverName):
-        self.coverName = coverName
-        self.coverType = self.coverDict[coverName]['value']
-        self.cover = cover
-        self.geometry = geometry
+    def prepare_script1(self):
 
-        startDate, endDate = self.prepare_dates(self.startJulian, self.endJulian)
         self.prepare_masking(self.maskingMethod)
         self.apply_masking_params()
         ls_setup = self.setup_landsat()
@@ -41,14 +56,10 @@ class step1(paramtersIO):
 
         return ee.ImageCollection(out)
 
-    def script1(self,baseline_col,geometry, cover, coverName):
-        # will pipeline be able to remember these states? or should I define them from input collection???
-        self.coverName = coverName
-        self.coverType = self.coverDict[coverName]['value']
-        self.cover = cover
-        self.geometry = geometry
-        print(baseline_col.size().getInfo())
-        self.baseline_col = baseline_col.filterMetadata("coverName","equals",coverName).map(lambda i : self.unscale_bands(i))
+    def script1(self):
+
+        print(self.full_baseline_col.size().getInfo())
+        self.baseline_col = self.full_baseline_col.filterMetadata("coverName","equals",self.coverName).map(lambda i : self.unscale_bands(i))
         print(self.baseline_col.size().getInfo())
         print(self.baseline_col.first().bandNames().getInfo())
         self.prepare_masking(self.maskingMethod)
@@ -59,7 +70,7 @@ class step1(paramtersIO):
         analysisDates, self.yr, self.baselineStartYr, self.baselineEndYr = self.get_analysis_dates(self.startJulian,self.endJulian,self.analysisPeriod,self.analysisYear)
         out = analysisDates.map(lambda i : self.dateTime(i))
 
-        return out#ee.ImageCollection(out)
+        return ee.ImageCollection(out)
 
     def unscale_bands(self,img):
 
@@ -404,15 +415,25 @@ class step1(paramtersIO):
         if export_path is None: export_path = self.coverDict[self.coverName]["exportPathBaseline"]
 
         imgName = f'baseline_mean_std_{self.analysisYear}_{self.coverDict[self.coverName]["abbreviation"]}_{i}'
-        if test_export:
-            imgName = f"{imgName}_TEST"
         print('imgName:',imgName)
 
         if test:
             # print(ee.Image(image).toDictionary().getInfo())
             # print(ee.Image(image).bandNames().getInfo())
+            imgName = f"{imgName}_TEST"
             print(self.coverName)
             print(f'{export_path}/{imgName}')
+            img = image
+            task = ee.batch.Export.image.toAsset(
+                image=img,description=imgName,
+                assetId=f'{export_path}/{imgName}',
+                region=geometry.geometry(),
+                scale=exportScale,
+                crs=crs,
+                maxPixels=1e13,
+                )
+            
+            task.start()
         else:
             img = image
             task = ee.batch.Export.image.toAsset(
@@ -428,7 +449,9 @@ class step1(paramtersIO):
 
         pass
 
-    def export_image_collection(self, collection, geometry, export_func, export_path=None,exportScale=None,crs=None,test=False,test_export=False):
+    def export_image_collection(self, collection, export_func,geometry=None, export_path=None,exportScale=None,crs=None,test=False,test_export=False):
+        if geometry is None:
+            geometry = self.geometry
         collection = collection.sort('system:time_start')
         col_size = collection.size()
         col_list = collection.toList(col_size)
@@ -443,12 +466,12 @@ class step1(paramtersIO):
 if "__main__" == __name__:
         
 
-    a = step1()
+    
     # drc
     test_geom = ee.FeatureCollection("projects/sig-misc-ee/assets/drc_fire/test_areas/test_area")
     DRC_border = ee.FeatureCollection("projects/ee-karistenneson/assets/BurnedBiomass/DRC_Training/DRC_Border")
-
     cover = ee.Image('projects/sig-ee/FIRE/DRC/DIAF_2000forest')
+
     # # // The land cover map is for 2000.
     # # // Cover classes are in this order:
     # # // Value, Label, Abbreviation
@@ -464,22 +487,20 @@ if "__main__" == __name__:
     # # // "1,2,3" ,"Forests without dry forest", FOREST
     # # //Chose a cover class to filter to for fire detection:
     covername = "Dry forest or open forest"
-
+    a = step1(2016,test_geom,cover,covername)
     # # dag step 1. make baseline col, wait for export
-    prep_lc = a.prepare_script1(DRC_border,cover,covername)
-    # print(prep_lc.aggregate_array('system:time_start').map(lambda f :ee.Date(f)).getInfo())
-    # test_prep_lc = a.test_prepare_script1(test_geom,cover,covername)
-    # print(test_prep_lc.getInfo())
-    a.export_image_collection(prep_lc,DRC_border,a.export_baseline_landcover,test=False)
+    prep_lc = a.prepare_script1()
+    a.export_image_collection(prep_lc,a.export_baseline_landcover,test=True,exportScale=500)
 
     # # dag step 2. calculate anomalies, wait for export
     # baselineCol = ee.ImageCollection("projects/sig-misc-ee/assets/drc_fire/baseline")
-    # anom_lc = a.script1(baselineCol,test_geom,cover,covername)
+    anom_lc = a.script1()
+    print(dir(a))
     # print(ee.ImageCollection(ee.List(anom_lc).get(4)).first().id().getInfo())
     # assert ee.List(anom_lc).map(lambda i : ee.ImageCollection(i).size()).getInfo() == [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
     # print(anom_lc.first().bandNames().getInfo())
-    # a.export_image_collection(anom_lc,DRC_border,a.export_nbr_anomalies, test=False)
+    a.export_image_collection(anom_lc,a.export_nbr_anomalies, test=True)
   
 
     # ###############################3
