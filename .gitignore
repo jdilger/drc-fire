@@ -127,3 +127,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+main.py
+_archive/config.py
+_archive/paramters.py
+_archive/10_Automated_Fire_Mapping_Script_02.py
+_archive/10_Automated_Fire_Mapping_Script_01.py
