@@ -7,6 +7,13 @@ ee.Initialize()
 
 class step2:
     def __init__(self, step1, alpha, pVal):
+        '''Generate yearly burn product from NBR anomalies that incorporates MODIS hotspots.
+
+        Args:
+            step1 (object): The initialized object used for earlier steps.
+            alpha (float): p-value threshold for identifying fires.
+            pVal (str): A string for the p-value image to use for thresholding. Can be pval_spatial or pval_temporal
+        '''
         self.pVal = pVal
         self.alpha = alpha
 

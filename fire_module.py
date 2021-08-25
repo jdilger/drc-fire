@@ -6,6 +6,16 @@ ee.Initialize()
 
 
 class step1(paramtersIO):
+    '''Class for initializing the first steps in the burn anomalies mapping process and key input into the second step for generating burn maps.
+
+    Args:
+        paramtersIO (class): Parameters for cloud and shadow masking and dictionary of cover names and export paths.
+        analysisYear (int): The year to generate burn products.
+        geometry (ee.FeatureCollection): A feature collection of at least 1 geometry for the ROI. If there are multiple features in a collection the geometry is found with the .geometry() method.
+        cover (ee.Image): The land cover image that is described in paramterIO cover dictionary.
+        coverName (str): The land cover name to generate burn products for.
+    '''
+
     def __init__(self, analysisYear: int, geometry, cover, coverName):
         paramtersIO.__init__(self)
 
@@ -316,6 +326,7 @@ class step1(paramtersIO):
     def dateTime(self, dt):
         dt = ee.Number(dt)
         # //Get dates - analysis period
+        # todo: improvments analysisDates and baseline dates to funtion? another class?
         analysisStartJulian = dt
         analysisEndJulian = dt.add(self.analysisPeriod).subtract(1)
         analysisStartDate = ee.Date.fromYMD(
