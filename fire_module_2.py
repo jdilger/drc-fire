@@ -29,8 +29,8 @@ class step2:
         self.geometry = step1.geometry
         self.crs = step1.crs
         self.export_scale = step1.exportScale
-        self.zCollection = self.coverDict[self.coverName]["exportPath"]
-        self.exportCollection = self.coverDict[self.coverName]['exportPathYearly']
+        self.zCollection = self.coverDict["exportPath"]
+        self.exportCollection = self.coverDict['exportPathYearly']
 
     def scalePBands(self, img: ee.Image) -> ee.Image:
         s_bands = img.select(["pval_spatial", 'pval_temporal'])

@@ -25,8 +25,10 @@ class step1(paramtersIO):
         self.coverType = self.coverDict[coverName]['value']
         self.cover = cover
         self.geometry = geometry
+        self.export_path = self.coverDict["exportPath"]
+        self.export_path_baseline = self.coverDict["exportPathBaseline"]
         self.full_baseline_col = ee.ImageCollection(
-            self.coverDict[coverName]['exportPathBaseline'])
+            self.export_path_baseline)
 
         # ls init
         self.ls = None
@@ -449,7 +451,7 @@ class step1(paramtersIO):
         if crs is None:
             crs = self.crs
         if export_path is None:
-            export_path = self.coverDict[self.coverName]["exportPath"]
+            export_path = self.export_path
 
         scaleBands = image.select(
             ['pval_spatial', 'pval_temporal']).multiply(10000).int16()
@@ -493,7 +495,7 @@ class step1(paramtersIO):
         if crs is None:
             crs = self.crs
         if export_path is None:
-            export_path = self.coverDict[self.coverName]["exportPathBaseline"]
+            export_path = self.export_path_baseline
 
         imgName = f'baseline_mean_std_{self.analysisYear}_{self.coverDict[self.coverName]["abbreviation"]}_{i}'
         print('imgName:', imgName)

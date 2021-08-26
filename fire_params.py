@@ -12,38 +12,28 @@ class paramtersIO(object):
                 "value": 1,
                 "abbreviation": "DHF",
                 "color": '8aa745',
-                "exportPath": "projects/sig-misc-ee/assets/drc_fire/nbr_anomalies",
-                "exportPathBaseline": "projects/sig-misc-ee/assets/drc_fire/baseline",
             },
             "Dense moist forest on hydromorphic soil": {
                 "value": 2,
                 "abbreviation": "DMF",
                 "color": '6ee682',
-                "exportPath": "projects/sig-misc-ee/assets/drc_fire/nbr_anomalies",
-                "exportPathBaseline": "projects/sig-misc-ee/assets/drc_fire/baseline",
+
             },
             "Secondary forest": {
                 "value": 3,
                 "abbreviation": "SNDF",
                 "color": 'f0ff72',
-                "exportPath": "projects/sig-misc-ee/assets/drc_fire/nbr_anomalies",
-                "exportPathBaseline": "projects/sig-misc-ee/assets/drc_fire/baseline",
+
             },
             "Dry forest or open forest": {
                 "value": 4,
                 "abbreviation": "DRYF",
                 "color": 'ffc625',
-                "exportPath": "projects/sig-misc-ee/assets/drc_fire/nbr_anomalies",
-                "exportPathBaseline": "projects/sig-misc-ee/assets/drc_fire/baseline",
-                "exportPathYearly": "projects/sig-misc-ee/assets/drc_fire/yearly"
             },
             "Savannah": {
                 "value": 5,
                 "abbreviation": "SAV",
                 "color": '19ffbf',
-                "exportPath": "projects/sig-misc-ee/assets/drc_fire/test_runs/nbr_anomalies",
-                "exportPathBaseline": "projects/sig-misc-ee/assets/drc_fire/test_runs/baseline",
-                "exportPathYearly": "projects/sig-misc-ee/assets/drc_fire/test_runs/yearly"
             },
             "Cultures and regeneration of abandoned crops": {
                 "value": 6,
@@ -67,11 +57,11 @@ class paramtersIO(object):
             },
             "Forests without dry forest": {
                 "value": [1, 2, 3],
-                "abbreviation": "FOREST",
-                "exportPath": "projects/sig-misc-ee/assets/drc_fire/nbr_anomalies",
-                "exportPathBaseline": "projects/sig-misc-ee/assets/drc_fire/baseline",
-                "exportPathYearly": "projects/sig-misc-ee/assets/drc_fire/yearly"
-            }
+                "abbreviation": "FOREST"
+            },
+            "exportPath": "projects/central-africa-silvacarbon/assets/drc_fire/nbr_anomalies",
+            "exportPathBaseline": "projects/central-africa-silvacarbon/assets/drc_fire/baseline",
+            "exportPathYearly": "projects/central-africa-silvacarbon/assets/drc_fire/yearly"
         }
 
         self.roc_coverDict = {
