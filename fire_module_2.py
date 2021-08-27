@@ -160,7 +160,7 @@ class step2:
         if crs is None:
             crs = self.crs
         if export_path is None:
-            export_path = self.coverDict[self.coverName]["exportPathYearly"]
+            export_path = self.exportCollection
 
         if image_name is None:
             imgName = f"burn_{self.analysisYear}_{self.coverDict[self.coverName]['abbreviation']}"
