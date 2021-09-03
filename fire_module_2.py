@@ -29,6 +29,7 @@ class step2:
         self.geometry = step1.geometry
         self.crs = step1.crs
         self.export_scale = step1.exportScale
+
         self.zCollection = self.coverDict["exportPath"]
         self.exportCollection = self.coverDict['exportPathYearly']
 
@@ -189,9 +190,14 @@ class step2:
         task.start()
         pass
 
+    def filter_and_sort_collection(self, collection: str, year: int):
+        image_collection = ee.ImageCollection(collection) \
+            .filterMetadata('analysisYear', 'equals', year) \
+            .sort('system:time_start')
+        return image_collection
+
     def main(self):
-        zScores = ee.ImageCollection(self.zCollection) \
-            .sort('system:time_start') \
+        zScores = self.filter_and_sort_collection(self.zCollection, self.analysisYear) \
             .map(self.scalePBands)
 
         # // Get metadata about collection from the first image
@@ -207,7 +213,7 @@ class step2:
 
         burnYearly = joinZPandPPZP.select(['burn', 'yearMonthDay']).max()
 
-        self.step1 = step1
+        # self.step1 = step1
         forExport = ee.Image.cat(
             [burnYearly, self.cover.rename('landcover')]).set(metaData)
 
