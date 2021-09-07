@@ -153,6 +153,7 @@ class step1(paramtersIO):
         env.maskSR = self.applyFmaskCloudMask
         env.shadowMask = self.applyTDOM
         env.cloudMask = self.applyCloudScore
+        env.SLC = self.includeSLCOffL7
         ls = imgLib.landsat.functions(env)
         return ls
 
