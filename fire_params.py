@@ -5,8 +5,6 @@ class paramtersIO(object):
     def __init__(self):
         # // the default path to use if a pth isnt set in the landcoverOptions function.
         # // currently has export paths for default forest types for testing.
-        self.defaultExportPath = "projects/sig-misc-ee/assets/drc_fire/test_runs"
-
         self.drc_coverDict = {
             "Dense humid forest on dry land": {
                 "value": 1,
@@ -61,7 +59,9 @@ class paramtersIO(object):
             },
             "exportPath": "projects/central-africa-silvacarbon/assets/drc_fire/nbr_anomalies",
             "exportPathBaseline": "projects/central-africa-silvacarbon/assets/drc_fire/baseline",
-            "exportPathYearly": "projects/central-africa-silvacarbon/assets/drc_fire/yearly"
+            "exportPathYearly": "projects/central-africa-silvacarbon/assets/drc_fire/yearly",
+            "exportPathTest": "projects/central-africa-silvacarbon/assets/test_runs",
+            "ecoregions" :ee.Image("projects/sig-ee/FIRE/DRC/eco_regions"),
         }
 
         self.roc_coverDict = {
@@ -69,35 +69,28 @@ class paramtersIO(object):
                 "value": 10,
                 "abbreviation": "FOREST",
                 "color": '8aa745',
-                "exportPath": "projects/sig-misc-ee/assets/roc_fire/nbr_anomalies",
-                "exportPathBaseline": "projects/sig-misc-ee/assets/roc_fire/baseline",
-                "exportPathYearly": "projects/sig-misc-ee/assets/roc_fire/yearly",
 
             },
             "Background": {
                 "value": 0,
                 "abbreviation": "BG",
                 "color": '6ee682',
-                # "exportPath":"projects/sig-misc-ee/assets/drc_fire/test_runs/dmf",
-                "exportPathBaseline": "projects/sig-misc-ee/assets/roc_fire/baseline",
             },
             "Non forest": {
                 "value": 20,
                 "abbreviation": "NF",
                 "color": 'f0ff72',
-                # "exportPath": "projects/sig-misc-ee/assets/drc_fire/test_runs/sndf",
-                "exportPathBaseline": "projects/sig-misc-ee/assets/roc_fire/baseline",
             },
+            "exportPath": "projects/central-africa-silvacarbon/assets/roc_fire/nbr_anomalies",
+            "exportPathBaseline": "projects/central-africa-silvacarbon/assets/roc_fire/baseline",
+            "exportPathYearly": "projects/central-africa-silvacarbon/assets/roc_fire/yearly",
+            "exportPathTest": "projects/central-africa-silvacarbon/assets/test_runs",
+            "ecoregions":ee.Image("projects/sig-misc-ee/assets/roc_fire/ecozones/eco_regions"),
         }
 
-        self.coverDict = self.drc_coverDict  # self.roc_coverDict
+        self.coverDict = self.drc_coverDict   #self.roc_coverDict #
         # // Set the ecological regions to use for Z-score calculation
-        self.groups = ee.Image("projects/sig-ee/FIRE/DRC/eco_regions")
-        # rco
-        # self.groups =  ee.Image("projects/sig-misc-ee/assets/roc_fire/ecozones/eco_regions")
-        # // Specify start and end years for all analyses
-        # // This method requires at least a 4-year time-span.
-        # self.analysisYear = 2016
+        self.groups = self.coverDict["ecoregions"]
 
         # // Specify the  number of years to include in the baseline statistics calculations
         self.baselineLength: int = 3
@@ -145,7 +138,7 @@ class paramtersIO(object):
 
         # // Choose whether to include Landat 7
         # // Generally only included when data are limited
-        self.includeSLCOffL7 = False
+        self.includeSLCOffL7 = True
 
         # // Whether to defringe L5
         # // Landsat 5 data has fringes on the edges that can introduce anomalies into
