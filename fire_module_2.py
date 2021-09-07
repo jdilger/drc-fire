@@ -1,12 +1,12 @@
 
-from fire_module import step1
+from fire_params import paramtersIO
 import ee
 
 ee.Initialize()
 
 
-class step2:
-    def __init__(self, step1, alpha, pVal):
+class step2(paramtersIO):
+    def __init__(self):
         '''Generate yearly burn product from NBR anomalies that incorporates MODIS hotspots.
 
         Args:
@@ -14,21 +14,14 @@ class step2:
             alpha (float): p-value threshold for identifying fires.
             pVal (str): A string for the p-value image to use for thresholding. Can be pval_spatial or pval_temporal
         '''
-        self.pVal = pVal
-        self.alpha = alpha
+        paramtersIO.__init__(self)
+        self.pVal = None
+        self.alpha = None
 
-        self.step1 = step1
+        self.coverDict = self.coverDict
 
-        self.coverDict = step1.coverDict
-        self.coverName = step1.coverName
-        self.cover = step1.cover
-
-        self.analysisYear = step1.analysisYear
-        self.analysisPeriod = ee.Number(step1.analysisPeriod)
-
-        self.geometry = step1.geometry
-        self.crs = step1.crs
-        self.export_scale = step1.exportScale
+        self.analysisYear = None
+        self.analysisPeriod = ee.Number(self.analysisPeriod)
 
         self.zCollection = self.coverDict["exportPath"]
         self.exportCollection = self.coverDict['exportPathYearly']
@@ -152,19 +145,18 @@ class step2:
 
         return joined
 
-    def export_burn_yearly(self, image, geometry=None, export_path=None, exportScale=None, crs=None, test=False, image_name=None):
+    def export_burn_yearly(self, image, geometry, export_path=None, exportScale=None, crs=None, test=False, image_name=None):
+        if isinstance(geometry, ee.FeatureCollection):
+            geometry = geometry.geometry()
 
         if exportScale is None:
-            exportScale = self.export_scale
-        if geometry is None:
-            geometry = self.geometry.geometry()
+            exportScale = self.exportScale
         if crs is None:
             crs = self.crs
         if export_path is None:
             export_path = self.exportCollection
-
         if image_name is None:
-            imgName = f"burn_{self.analysisYear}_{self.coverDict[self.coverName]['abbreviation']}"
+            imgName = f"burn_{self.analysisYear}"
         else:
             imgName = image_name
 
@@ -173,6 +165,7 @@ class step2:
         if test:
             imgName = f"{imgName}_TEST"
             exportScale = 500
+            export_path = self.coverDict['exportPathTest']
             print(image.toDictionary().getInfo())
             print(ee.Image(image).bandNames().getInfo())
             print(f'{export_path}/{imgName}')
@@ -196,10 +189,17 @@ class step2:
             .sort('system:time_start')
         return image_collection
 
-    def main(self):
+    def main(self, alpha, pVal, year, cover):
+        self.alpha = alpha
+        self.pVal = pVal
+        self.analysisYear = year
+        self.cover = cover
+
         zScores = self.filter_and_sort_collection(self.zCollection, self.analysisYear) \
             .map(self.scalePBands)
 
+        client_size = zScores.size().getInfo()
+        assert client_size == 24, f"filtered collection doesn't seem to be the correct size: {client_size}"
         # // Get metadata about collection from the first image
         templateImage = zScores.first()
         nonSysProperties = templateImage.propertyNames()
@@ -213,7 +213,6 @@ class step2:
 
         burnYearly = joinZPandPPZP.select(['burn', 'yearMonthDay']).max()
 
-        # self.step1 = step1
         forExport = ee.Image.cat(
             [burnYearly, self.cover.rename('landcover')]).set(metaData)
 
@@ -229,19 +228,19 @@ if "__main__" == __name__:
     cover = ee.Image('projects/sig-ee/FIRE/DRC/DIAF_2000forest')
     covername = "Forests without dry forest"
 
-    a = step1(2016, test_geom, cover, covername)
+    # a = step1(2016, test_geom, cover, covername)
 
     # // Threshold for NBR anomaly p-value
     alpha = 0.05
     # // Specify which z-score p-value to use (spatiotemporal or temporal)
     # // These are entered as 'pval_spatial' or 'pval_temporal'
     pVal = 'pval_spatial'
-    b = step2(a, alpha, pVal)
+    b = step2()
     # print(dir(b))
-    out = b.main()
+    out = b.main(alpha, pVal, 2014, cover)
     # print(out.size().getInfo())
     print(out.bandNames().getInfo())
-    b.export_burn_yearly(out, test=True)
+    b.export_burn_yearly(out, DRC_border, test=False)
     # print(out.select([b.pVal]).bandNames().getInfo())
     # not found: pval_spatial
     # in output..: pval_spatial
