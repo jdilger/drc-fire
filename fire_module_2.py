@@ -189,7 +189,7 @@ class step2(paramtersIO):
             .sort('system:time_start')
         return image_collection
 
-    def main(self, alpha, pVal, year, cover):
+    def main(self, alpha, pVal, year, cover, expected_size=None):
         self.alpha = alpha
         self.pVal = pVal
         self.analysisYear = year
@@ -198,8 +198,12 @@ class step2(paramtersIO):
         zScores = self.filter_and_sort_collection(self.zCollection, self.analysisYear) \
             .map(self.scalePBands)
 
+        if expected_size is None:
+            expected_size = 24
+            
         client_size = zScores.size().getInfo()
-        assert client_size == 24, f"filtered collection doesn't seem to be the correct size: {client_size}"
+        
+        assert client_size == expected_size, f"filtered collection doesn't seem to be the correct size: {client_size}"
         # // Get metadata about collection from the first image
         templateImage = zScores.first()
         nonSysProperties = templateImage.propertyNames()
