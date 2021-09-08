@@ -7,13 +7,6 @@ ee.Initialize()
 
 class step2(paramtersIO):
     def __init__(self):
-        '''Generate yearly burn product from NBR anomalies that incorporates MODIS hotspots.
-
-        Args:
-            step1 (object): The initialized object used for earlier steps.
-            alpha (float): p-value threshold for identifying fires.
-            pVal (str): A string for the p-value image to use for thresholding. Can be pval_spatial or pval_temporal
-        '''
         paramtersIO.__init__(self)
         self.pVal = None
         self.alpha = None
@@ -189,7 +182,25 @@ class step2(paramtersIO):
             .sort('system:time_start')
         return image_collection
 
-    def main(self, alpha, pVal, year, cover, expected_size=None):
+    def main(self, alpha, pVal, year, cover, expected_size=24):
+        '''Generate yearly burn product from NBR anomalies that incorporates
+            MODIS hotspots.
+
+        Args:
+            alpha (float): p-value threshold for identifying fires.
+            pVal (str): A string for the p-value image to use for thresholding.
+                 Can be pval_spatial or pval_temporal
+            year (int):  The year to export.
+            cover (ee.Image): The land cover image that is described in 
+                paramterIO cover dictionary.
+            expected_size (int, optional): The expected image collection 
+                size of anomaly images for all land covers being consoli-
+                dated. Defaults to 24.
+
+        Returns:
+            ee.Image: A yearly burn product for all land covers from the 
+                input anomaly collection.
+        '''
         self.alpha = alpha
         self.pVal = pVal
         self.analysisYear = year
@@ -200,9 +211,9 @@ class step2(paramtersIO):
 
         if expected_size is None:
             expected_size = 24
-            
+
         client_size = zScores.size().getInfo()
-        
+
         assert client_size == expected_size, f"filtered collection doesn't seem to be the correct size: {client_size}"
         # // Get metadata about collection from the first image
         templateImage = zScores.first()
