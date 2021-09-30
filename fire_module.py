@@ -79,7 +79,12 @@ class step1(paramtersIO):
 
         print(self.full_baseline_col.size().getInfo())
         self.baseline_col = self.full_baseline_col.filterMetadata(
-            "coverName", "equals", self.coverName).map(lambda i: self.unscale_bands(i))
+            "coverName", "equals", self.coverName) \
+            .filterMetadata('analysisYear', 'equals', self.analysisYear) \
+            .map(lambda i: self.unscale_bands(i))
+        client_size = 12
+        expected_size = self.baseline_col.size().getInfo()
+        assert client_size == expected_size, f"filtered collection doesn't seem to be the correct size: {client_size}"
         print(self.baseline_col.size().getInfo())
         print(self.baseline_col.first().bandNames().getInfo())
         self.prepare_masking(self.maskingMethod)
