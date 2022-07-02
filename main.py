@@ -8,8 +8,7 @@ ee.Initialize()
 
 
 # drc
-test_geom = ee.FeatureCollection(
-    "projects/sig-misc-ee/assets/drc_fire/test_areas/test_area")
+test_geom = ee.FeatureCollection("projects/sig-misc-ee/assets/drc_fire/test_areas/test_area")
 DRC_border = ee.FeatureCollection(
     "projects/ee-karistenneson/assets/BurnedBiomass/DRC_Training/DRC_Border")
 cover = ee.Image('projects/sig-ee/FIRE/DRC/DIAF_2000forest')
